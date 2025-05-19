@@ -1,6 +1,13 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import ReplyKeyboardRemove
 import db
+
+
+def canceling(bot, user_states, message):
+    bot.send_message(message.chat.id, f"Ok, I canceled your action!", reply_markup=ReplyKeyboardRemove())
+    del user_states[message.from_user.id]
+
 
 def show_lists(bot, message, action):
     user_id = message.from_user.id
@@ -46,28 +53,36 @@ def work_with_flashcards(bot, user_states, first_side, message_or_call):
     if hasattr(message_or_call, 'chat'):
         chat_id = message_or_call.chat.id
         user_id = message_or_call.from_user.id
-        print('message')
     else:
         chat_id = message_or_call.message.chat.id
         user_id = message_or_call.from_user.id
-        print('call')
 
     if user_states[user_id]['flashcards']:
         side = first_side == 'ru'
         card = user_states[user_id]['flashcards'][-1]
-
-        markup = ReplyKeyboardMarkup(resize_keyboard=True)
-        button = KeyboardButton('Check')
-        cancel_button = KeyboardButton('Cancel')
-        markup.add(cancel_button, button)
 
         user_states[user_id]['step'] = 'checking'
         bot.send_message(
             chat_id,
             f"\u200B\n*{card[side]}*\n\u200B",
             parse_mode="Markdown",
-            reply_markup=markup
+            reply_markup=flashcard_check_buttons()
         )
     else:
         del user_states[user_id]
         bot.send_message(chat_id, 'The list ended! Good job!')
+
+
+def flashcard_check_buttons():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    button = KeyboardButton('Check')
+    cancel_button = KeyboardButton('Cancel')
+    markup.add(cancel_button, button)
+    return markup
+
+
+def flashcard_evaluation_buttons():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row(KeyboardButton("Cancel"), KeyboardButton("Right"))
+    markup.row(KeyboardButton("Wrong"))
+    return markup

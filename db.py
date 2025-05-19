@@ -52,3 +52,12 @@ def get_flashcards(user_id, list_name):
     return flashcards
 
 
+def insert_word(user_id, list_name, word, translation):
+    with get_connection() as (conn, cur):
+        cur.execute(
+            "INSERT INTO words (user_id, list_name, word, translation) VALUES (?, ?, ?, ?)",
+            (user_id, list_name, word.strip(), translation.strip())
+        )
+        conn.commit()
+
+
