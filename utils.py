@@ -11,7 +11,7 @@ def canceling(bot, user_states, message):
 
 def show_lists(bot, message, action):
     user_id = message.from_user.id
-    lists = db.get_user_list(user_id)
+    lists = db.get_user_lists(user_id)
 
     if not lists:
         bot.send_message(message.chat.id, f"There are no lists to {action}.")
@@ -23,6 +23,15 @@ def show_lists(bot, message, action):
     markup.add(InlineKeyboardButton('Cancel', callback_data=f'{action}_Cancel'))
 
     bot.send_message(message.chat.id, f"Choose a list to {action}.", reply_markup=markup)
+
+
+def show_word_list(bot, call, words):
+    if words:
+        word_list = "\n".join([f"{w[0]}: {w[1]}" for w in words])
+        bot.send_message(call.message.chat.id, f"{word_list}", reply_markup=ReplyKeyboardRemove())
+    else:
+        bot.send_message(call.message.chat.id, "There are no words in this list.",
+                         reply_markup=ReplyKeyboardRemove())
 
 
 def show_action_to_learn(bot, message):

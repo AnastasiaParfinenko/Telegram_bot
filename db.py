@@ -31,7 +31,7 @@ def get_connection():
         conn.close()
 
 
-def get_user_list(user_id):
+def get_user_lists(user_id):
     with sqlite3.connect("words.db") as conn:
         cur = conn.cursor()
         cur.execute("SELECT DISTINCT list_name FROM words WHERE user_id = ?",
@@ -40,20 +40,24 @@ def get_user_list(user_id):
     return lists
 
 
-def get_flashcards(user_id, list_name):
-    import random
+def get_word_list(user_id, list_name):
     with sqlite3.connect("words.db") as conn:
         cur = conn.cursor()
         cur.execute("SELECT word, translation FROM words WHERE user_id = ? AND list_name = ?",
-                (user_id, list_name))
-        flashcards = cur.fetchall()
+                    (user_id, list_name))
+        return cur.fetchall()
 
+
+def get_flashcards(user_id, list_name):
+    import random
+    flashcards = get_word_list(user_id, list_name)
     random.shuffle(flashcards)
     return flashcards
 
 
 def insert_word(user_id, list_name, word, translation):
-    with get_connection() as (conn, cur):
+    with sqlite3.connect("words.db") as conn:
+        cur = conn.cursor()
         cur.execute(
             "INSERT INTO words (user_id, list_name, word, translation) VALUES (?, ?, ?, ?)",
             (user_id, list_name, word.strip(), translation.strip())
@@ -61,3 +65,27 @@ def insert_word(user_id, list_name, word, translation):
         conn.commit()
 
 
+def delete_list(user_id, list_name):
+    with sqlite3.connect("words.db") as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM words WHERE user_id = ? AND list_name = ?",
+                    (user_id, list_name))
+        conn.commit()
+
+def create_list(user_id, list_name, words):
+    import re
+
+    error_lines = []
+
+    with sqlite3.connect("words.db") as conn:
+        cur = conn.cursor()
+        for line in words:
+            try:
+                word, translation = re.split(r':\s*', line, maxsplit=1)
+                cur.execute("INSERT INTO words (user_id, list_name, word, translation) VALUES (?, ?, ?, ?)",
+                            (user_id, list_name, word.strip(), translation.strip()))
+            except ValueError:
+                error_lines.append(line)
+        conn.commit()
+
+    return error_lines

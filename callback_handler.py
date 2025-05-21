@@ -4,31 +4,24 @@ import utils
 
 
 def do_view(bot, user_states, call, button_name):
-    user_id = call.from_user.id
-
-    with db.get_connection() as (conn, cur):
-        cur.execute("SELECT word, translation FROM words WHERE user_id = ? AND list_name = ?",
-                    (user_id, button_name))
-        words = cur.fetchall()
-
-        if words:
-            word_list = "\n".join([f"{w[0]} - {w[1]}" for w in words])
-            bot.send_message(call.message.chat.id, f"{word_list}", reply_markup=ReplyKeyboardRemove())
-        else:
-            bot.send_message(call.message.chat.id, "There are no words in this list.",
-                             reply_markup=ReplyKeyboardRemove())
+    words = db.get_word_list(call.from_user.id, button_name)
+    utils.show_word_list(bot, call, words)
 
 
 def do_delete(bot, user_states, call, button_name):
+    db.delete_list(call.from_user.id, button_name)
+    bot.send_message(call.message.chat.id, f"The list {button_name} deleted.")
+
+
+def do_correct(bot, user_states, call, button_name):
+    do_view(bot, user_states, call, button_name)
+
     user_id = call.from_user.id
+    user_states[user_id]["list_name"] = button_name
+    user_states[user_id]["step"] = "waiting_for_words"
 
-    with db.get_connection() as (conn, cur):
-        cur.execute("DELETE FROM words WHERE user_id = ? AND list_name = ?",
-                    (user_id, button_name))
-
-        bot.send_message(call.message.chat.id, f"The list {button_name} deleted.")
-
-        conn.commit()
+    text = f"Sent me a new list of words in the format: word: translate"
+    bot.send_message(call.message.chat.id, text , reply_markup=utils.do_cancel_button())
 
 
 def do_learn(bot, user_states, call, button_name):

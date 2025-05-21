@@ -21,26 +21,35 @@ def start(message):
 
 @bot.message_handler(commands=["add"])
 def start_add(message):
-    user_states[message.from_user.id] = {"step": "waiting_for_list_name"}
+    user_states[message.from_user.id]["step"] = "waiting_for_list_name"
+    user_states[message.from_user.id]['action'] = 'add'
 
     bot.send_message(message.chat.id, "What list do you want to add?", reply_markup=utils.do_cancel_button())
 
 
 @bot.message_handler(commands=["view"])
 def start_view(message):
+    user_states[message.from_user.id]['action'] = 'view'
     utils.show_lists(bot, message, "view")
 
 
 @bot.message_handler(commands=["delete"])
 def start_delete(message):
+    user_states[message.from_user.id]['action'] = 'delete'
     utils.show_lists(bot, message, "delete")
 
 
 @bot.message_handler(commands=["learn"])
 def start_learn(message):
+    user_states[message.from_user.id]['action'] = 'learn'
     utils.show_lists(bot, message, "learn")
 
-# TODO correct
+
+@bot.message_handler(commands=["correct"])
+def start_correct(message):
+    user_states[message.from_user.id]['action'] = 'correct'
+    utils.show_lists(bot, message, "correct")
+
 
 @bot.message_handler(func=lambda m: m.from_user.id in user_states)
 def handle_user_response(message):
@@ -67,7 +76,7 @@ def handle_user_response(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    action, button_name = call.data.split('_')
+    action, button_name = call.data.split('_', 1)
 
     if button_name == 'Cancel':
         bot.send_message(call.message.chat.id, f'I have canceled your action.')
@@ -76,6 +85,7 @@ def handle_callback(call):
     action_handlers = {
         "view": callback_handler.do_view,
         "delete": callback_handler.do_delete,
+        "correct": callback_handler.do_correct,
         "learn": callback_handler.do_learn,
         "learning": callback_handler.do_learning
     }

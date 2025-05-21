@@ -1,7 +1,5 @@
 import utils
 from telebot.types import ReplyKeyboardRemove
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import re
 import db
 
 
@@ -11,7 +9,9 @@ def waiting_for_list_name(bot, user_states, message):
 
     user_states[user_id]["list_name"] = user_text
     user_states[user_id]["step"] = "waiting_for_words"
-    bot.send_message(message.chat.id, "Sent me a list of words in the format: word – translate", reply_markup=utils.do_cancel_button())
+    text = "Sent me a list of words in the format: word: translate"
+    bot.send_message(message.chat.id, text, reply_markup=utils.do_cancel_button())
+    # TODO: consider the case of the existence of a list
 
 
 def waiting_for_words(bot, user_states, message):
@@ -20,19 +20,15 @@ def waiting_for_words(bot, user_states, message):
     list_name = user_states[user_id]["list_name"]
     words = user_text.split("\n")
 
-    with db.get_connection() as (conn, cur):
+    db.delete_list(user_id, list_name)
+    error_lines = db.create_list(user_id, list_name, words)
+    if error_lines:
+        error_text = "There are errors in the following lines:\n" + "\n".join(error_lines)
+        bot.send_message(message.chat.id, error_text, reply_markup=ReplyKeyboardRemove())
+    #TODO: what to do with the error_lines?
 
-        for line in words:
-            try:
-                word, translation = re.split(r'[-—]{1,2}\s*', line, maxsplit=1)
-                cur.execute("INSERT INTO words (user_id, list_name, word, translation) VALUES (?, ?, ?, ?)",
-                            (user_id, list_name, word.strip(), translation.strip()))
-            except ValueError:
-                bot.send_message(message.chat.id, f"There is a mistake: {line}.", reply_markup=ReplyKeyboardRemove())
-
-        bot.send_message(message.chat.id, f"The list '{list_name}' added!", reply_markup=ReplyKeyboardRemove())
-
-        conn.commit()
+    text = f"The list '{list_name}' {user_states[user_id]['action']}ed!"
+    bot.send_message(message.chat.id, text, reply_markup=ReplyKeyboardRemove())
     del user_states[user_id]
 
 
